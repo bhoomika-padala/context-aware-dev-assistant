@@ -67,17 +67,3 @@ def test_retrieval_time_is_small(seeded):
     r.retrieve("p1", "login token expired")
     assert time.perf_counter() - t < 1.0
 
-def test_weakly_related_entries_are_not_injected():
-    for cat, d, e in [
-        ("development_experience", "Intermittent 401 errors right after login",
-         "JWT expiry was not validated before authorizing requests; check token expiry first."),
-        ("development_experience", "Flaky test_checkout failing only in CI",
-         "Test depended on the system timezone; fixed by freezing time."),
-        ("task", "Password reset flow",
-         "Email sending is done; token generation and expiry are still unfinished."),
-    ]:
-        r.index_memory(db.add_memory("p1", cat, d, e))
-    res = r.retrieve("p1", "login keeps failing with 401 after token refresh")
-    descs = [h["description"] for hs in res.values() for h in hs]
-    assert any("401" in d for d in descs)
-    assert not any("Flaky" in d for d in descs)

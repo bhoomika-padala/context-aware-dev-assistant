@@ -65,3 +65,21 @@ THETA_DUP = 0.85           # no judge: at or above this, EDIT the existing entry
 THETA_JUDGE = 0.55        # with a judge: at or above this, ask it (same / contradicts / unrelated)
 
 RESOLVED_TASK_FACTOR = 0.5 # resolved tasks stay stored but rank lower
+
+# LLM (development provider)
+LLM_PROVIDER = "groq"
+LLM_MODEL = "openai/gpt-oss-120b"
+LLM_MAX_TOKENS = 2048          # reasoning models spend part of this on thinking
+LLM_REASONING_EFFORT = None    # "low" | "medium" | "high" if the model supports it
+LLM_JSON_MODE = False          # try True later if the model supports json_object
+LLM_RETRIES = 3
+
+# write path
+MAX_CANDIDATES = 3
+TRAJECTORY_MAX_CHARS = 12000
+
+# agent
+WORKSPACE_DIR = Path(__file__).resolve().parent / "toy_project"
+MAX_AGENT_STEPS = 12
+TEST_TIMEOUT = 60
+TOOL_OUTPUT_MAX_CHARS = 4000
