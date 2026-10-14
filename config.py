@@ -54,3 +54,14 @@ CATEGORY_BUDGET_TOKENS = {
     "architecture_note": 300,
 }
 CHARS_PER_TOKEN = 4   # rough estimate, good enough for budgeting
+
+# links (A-MEM-style, one hop)
+THETA_LINK = 0.45          # min cosine to link two entries in different categories
+MAX_LINKS = 5              # degree cap per entry
+MAX_LINKED_IN_PROMPT = 4   # how many linked entries one request may add
+
+# consolidation (Mem0-style)
+THETA_DUP = 0.85           # no judge: at or above this, EDIT the existing entry
+THETA_JUDGE = 0.55        # with a judge: at or above this, ask it (same / contradicts / unrelated)
+
+RESOLVED_TASK_FACTOR = 0.5 # resolved tasks stay stored but rank lower

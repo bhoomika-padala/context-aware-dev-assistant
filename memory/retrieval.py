@@ -59,6 +59,9 @@ def _score_category(entries, query, q_vec):
 
     recency = np.exp(-config.RECENCY_LAMBDA * np.array([_age_days(m) for m in entries]))
     score = config.ALPHA * cos + config.BETA * bm25_norm + config.GAMMA * recency
+    state = np.array([config.RESOLVED_TASK_FACTOR if m["task_state"] == "resolved" else 1.0
+                      for m in entries])
+    score = score * state
 
     hits = []
     for i, m in enumerate(entries):

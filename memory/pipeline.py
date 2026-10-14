@@ -1,13 +1,13 @@
-from memory import retrieval, composer
+from memory import retrieval, composer, links
 from memory import database as db
 
-def build_context(project_id, request, code_context="", categories=None):
-    """Returns (prompt, used_ids). The ids are useful for evaluation logging."""
+def build_context(project_id, request, code_context="", categories=None, expand_links=True):
     retrieved = retrieval.retrieve(project_id, request, categories)
+    if expand_links:
+        retrieved = links.expand(retrieved)
     prompt, used = composer.compose(request, retrieved, code_context)
-    db.mark_used(used)   # refreshes recency only for entries actually injected
+    db.mark_used(used)
     return prompt, used
 
-def get_context(project_id, request, code_context="", categories=None):
-    """The integration point: called by the agent before a task."""
-    return build_context(project_id, request, code_context, categories)[0]
+def get_context(project_id, request, code_context="", categories=None, expand_links=True):
+    return build_context(project_id, request, code_context, categories, expand_links)[0]
