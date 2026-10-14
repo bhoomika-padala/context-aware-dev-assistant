@@ -1,0 +1,22 @@
+[
+  {
+    "project_id": "eval-basic",
+    "query": "How should database connections be managed?",
+    "memory": {
+      "category": "convention",
+      "description": "Database connection handling",
+      "experience": "Use context managers to ensure connections are closed."
+    },
+    "expected_description": "Database connection handling"
+  },
+  {
+    "project_id": "eval-basic",
+    "query": "Why was PostgreSQL chosen?",
+    "memory": {
+      "category": "decision",
+      "description": "Database selection",
+      "experience": "PostgreSQL was selected for its JSON support."
+    },
+    "expected_description": "Database selection"
+  }
+]
