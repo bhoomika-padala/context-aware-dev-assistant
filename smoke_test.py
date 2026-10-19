@@ -1,24 +1,31 @@
 
 import os
 from dotenv import load_dotenv
-from google import genai
+from groq import Groq
 
 load_dotenv()
 
-api_key = os.getenv("ANTHROPIC_API_KEY")
-if not api_key:
-    raise RuntimeError("API key not found in .env")
-
-client = genai.Client(api_key=api_key)
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY"),
+    timeout=20.0,
+    max_retries=0,
+)
 
 try:
-    response = client.interactions.create(
-        model="gemini-3.8-flash",
-        input="Reply with exactly: API connection works.",
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-120b",
+        messages=[
+            {
+                "role": "user",
+                "content": "Reply with exactly: Groq generation works."
+            }
+        ],
+        max_completion_tokens=100,
     )
-    print("Gemini API call successful!")
-    print(response.output_text)
+
+    print("Generation successful!")
+    print(response.choices[0].message.content)
 
 except Exception as exc:
-    print(f"Gemini API call failed: {type(exc).__name__}")
+    print(f"Request failed: {type(exc).__name__}")
     print(str(exc)[:500])
