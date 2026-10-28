@@ -17,11 +17,14 @@ function TestResults({ results }) {
 
   const entries = Array.isArray(results)
     ? results
-    : Array.isArray(results.details)
+    : Array.isArray(results.runs)
+      ? results.runs
+      : Array.isArray(results.details)
       ? results.details
       : null;
   const passed = results.passed ?? results.passed_count;
   const failed = results.failed ?? results.failed_count;
+  const errors = results.errors ?? 0;
 
   return (
     <section aria-labelledby="test-results-title" style={cardStyle}>
@@ -37,6 +40,10 @@ function TestResults({ results }) {
           {"  ·  "}
           <span style={{ color: failed ? "#f87171" : "#94a3b8" }}>
             Failed: {failed ?? 0}
+          </span>
+          {"  ·  "}
+          <span style={{ color: errors ? "#fbbf24" : "#94a3b8" }}>
+            Errors: {errors}
           </span>
           {results.total != null && `  ·  Total: ${results.total}`}
         </p>
@@ -54,8 +61,15 @@ function TestResults({ results }) {
           {entries.map((entry, index) => {
             const passedTest =
               entry.status === "passed" ||
+              entry.exit_code === 0 ||
               entry.passed === true ||
               entry.success === true;
+            const failedTest =
+              entry.status === "failed" ||
+              (typeof entry.exit_code === "number" && entry.exit_code !== 0) ||
+              entry.failed > 0 ||
+              entry.errors > 0;
+            const label = passedTest ? "PASS" : failedTest ? "FAIL" : "INFO";
             return (
               <li
                 key={`${entry.name ?? entry.test ?? "test"}-${index}`}
@@ -64,12 +78,18 @@ function TestResults({ results }) {
                 <span
                   style={{
                     marginRight: 9,
-                    color: passedTest ? "#4ade80" : "#f87171",
+                    color: passedTest
+                      ? "#4ade80"
+                      : failedTest
+                        ? "#f87171"
+                        : "#7dd3fc",
                   }}
                 >
-                  {passedTest ? "PASS" : "FAIL"}
+                  {label}
                 </span>
-                {entry.name ?? entry.test ?? formatValue(entry)}
+                {entry.name ??
+                  entry.test ??
+                  `${entry.target ?? "Test run"}: ${entry.summary ?? formatValue(entry)}`}
               </li>
             );
           })}
@@ -97,6 +117,7 @@ export default function ExecutionResults({
   summaryReport,
   finalAnswer,
   runId,
+  memoryError,
   error,
 }) {
   if (state === "idle") {
@@ -190,6 +211,11 @@ export default function ExecutionResults({
       </section>
 
       <TestResults results={testResults} />
+      {memoryError && (
+        <p role="status" style={{ margin: 0, color: "#fbbf24" }}>
+          {memoryError}
+        </p>
+      )}
 
       <details style={cardStyle}>
         <summary

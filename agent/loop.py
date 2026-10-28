@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import config
@@ -36,6 +37,8 @@ def run_task(project_id, request, use_memory=True, workspace=None, max_steps=Non
 
     messages = [{"role": "user", "content": prompt}]
     trace = [f"User: {request}"]
+    tool_events = []
+    test_results = []
     answer, steps = "", 0
     for steps in range(1, max_steps + 1):
         resp = llm.chat(SYSTEM, messages, tools=tools.TOOLS)
@@ -50,6 +53,32 @@ def run_task(project_id, request, use_memory=True, workspace=None, max_steps=Non
                 result = tools.execute(root, call.name, call.args)
             trace.append(f"Agent: {call.name}({_clip(json.dumps(call.args), 200)})")
             trace.append(f"Tool result: {_clip(result)}")
+            tool_events.append({
+                "step": steps,
+                "tool": call.name,
+                "arguments": call.args,
+                "result": result,
+            })
+            if call.name == "run_tests":
+                exit_match = re.search(r"exit code (\d+)", result)
+                summary_match = re.search(
+                    r"=+\s*(.*?)\s+in\s+[\d.]+s\s*=+", result, re.DOTALL
+                )
+                test_results.append({
+                    "target": call.args.get("target") or ".",
+                    "exit_code": int(exit_match.group(1)) if exit_match else None,
+                    "passed": int(match.group(1)) if (
+                        match := re.search(r"(\d+) passed", result)
+                    ) else 0,
+                    "failed": int(match.group(1)) if (
+                        match := re.search(r"(\d+) failed", result)
+                    ) else 0,
+                    "errors": int(match.group(1)) if (
+                        match := re.search(r"(\d+) error", result)
+                    ) else 0,
+                    "summary": summary_match.group(1).strip() if summary_match else result,
+                    "output": result,
+                })
             messages.append(llm.tool_result_message(call.id, result))
     else:
         answer = f"Stopped after {max_steps} steps without a final answer."
@@ -62,5 +91,6 @@ def run_task(project_id, request, use_memory=True, workspace=None, max_steps=Non
         except Exception as e:      # a memory problem must not lose the agent's answer
             memory_error = f"{type(e).__name__}: {e}"
     return {"answer": answer, "prompt": prompt, "injected": injected,
-            "memory_updates": updates, "memory_error": memory_error, "steps": steps,"trace": trace}
-
+            "memory_updates": updates, "memory_error": memory_error, "steps": steps,
+            "trace": trace, "tool_events": tool_events,
+            "test_results": test_results}

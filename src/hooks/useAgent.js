@@ -8,6 +8,7 @@ const initialResult = {
   summaryReport: "",
   finalAnswer: "",
   runId: null,
+  memoryError: null,
 };
 
 export function useAgent() {
@@ -36,6 +37,7 @@ export function useAgent() {
             ? response.final_answer
             : "",
         runId: response.run_id ?? null,
+        memoryError: response.memory_error ?? null,
       });
       setState("success");
       return response;

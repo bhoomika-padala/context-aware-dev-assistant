@@ -1,4 +1,19 @@
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+).replace(/\/$/, "");
+
+function responseError(payload, status) {
+  if (typeof payload?.detail === "string") return payload.detail;
+  if (Array.isArray(payload?.detail)) {
+    return payload.detail
+      .map((issue) => issue.msg)
+      .filter((message) => typeof message === "string")
+      .join("; ");
+  }
+  if (typeof payload?.error === "string") return payload.error;
+  return `Task execution failed with status ${status}.`;
+}
+
 export async function executeTask(taskStr) {
   if (typeof taskStr !== "string" || !taskStr.trim()) {
     throw new TypeError("Task must be a non-empty string.");
@@ -29,13 +44,11 @@ export async function executeTask(taskStr) {
   }
 
   if (!response.ok) {
-    const message =
-      typeof payload.detail === "string"
-        ? payload.detail
-        : typeof payload.error === "string"
-          ? payload.error
-          : `Task execution failed with status ${response.status}.`;
-    throw new Error(message);
+    throw new Error(responseError(payload, response.status));
+  }
+
+  if (!payload || typeof payload !== "object") {
+    throw new Error("The coding agent API returned an invalid response.");
   }
 
   return payload;

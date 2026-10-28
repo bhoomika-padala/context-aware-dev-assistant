@@ -41,6 +41,7 @@ export default function Workspace() {
             summaryReport={agent.summaryReport}
             finalAnswer={agent.finalAnswer}
             runId={agent.runId}
+            memoryError={agent.memoryError}
             error={agent.error}
           />
         </div>

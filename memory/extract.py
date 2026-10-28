@@ -2,34 +2,34 @@ import config
 import llm
 from memory import database as db
 
-SYSTEM = """You maintain the long-term project memory of a software-engineering agent.
-You are given the transcript of one finished task. Decide what, if anything, is worth
-remembering for FUTURE tasks in this project.
 
-Categories (use exactly these names):
-- development_experience: a problem, what was tried (including failed attempts) and what worked.
-- decision: a technical choice and why it was made.
-- convention: a project-wide coding rule or practice.
-- architecture_note: a durable structural fact (which module does what, how parts depend on each other).
-- task: unfinished or follow-up work. Add "task_state": open | in_progress | resolved.
+SYSTEM = """You maintain the long-term project memory of a software-engineering agent.
+
+You receive either user-provided project information or a completed coding-task
+transcript. Extract reusable knowledge for future tasks.
+
+Categories:
+- development_experience: a problem, what was tried, and what happened.
+- decision: an explicitly stated technical choice and its reason.
+- convention: an explicitly stated project-wide coding rule or practice.
+- architecture_note: a stated structural fact about modules and dependencies.
+- task: unfinished or follow-up work. Include task_state: open | in_progress | resolved.
 
 Rules:
-- Return at most 3 candidates. Fewer is better. Return an empty list if nothing is reusable.
-- Keep only knowledge that would help on a different, future task. Skip one-off details,
-  small talk, and anything obvious from the code itself.
-- "description": the situation or topic BEFORE the resolution, one sentence.
-  "experience": the reusable insight, one or two sentences.
-- Do not copy raw logs, stack traces, line numbers or temporary paths. Keep module or
-  directory names when they matter (for example in architecture notes).
-- Record failed attempts as development_experience and say that the approach failed and why.
-- Only record what the transcript supports. If it does not show that the fix worked, say so.
-- Never include secrets, tokens or API keys.
-- Record each fact ONCE, in the single best-fitting category. Never restate the same
-  insight as an experience, a decision and an architecture note.
-- Do not record routine successful work (a migration, an install, a rename) unless the
-  transcript shows a failed attempt, a surprise, or a rule worth keeping.
-- A development_experience needs a problem and what actually happened, especially failures
-  or surprises. Prefer an architecture_note when the lesson is a structural fact.
+- Return at most 3 candidates. Fewer is better. Return [] if nothing is reusable.
+- For user-provided project information, preserve the facts and classify them
+  into the most appropriate categories.
+- Do not require the user to explicitly say "remember" or "store".
+- Do not invent decisions, reasons, architecture, or conventions.
+- An implementation detail is not automatically a team decision.
+- A coding convention must be supported by an explicit project rule or practice.
+- Record each fact once, in its single best-fitting category.
+- Keep knowledge useful for future tasks.
+- Do not copy logs, stack traces, temporary paths, secrets, tokens or API keys.
+- For development experiences, only claim a fix worked when the transcript
+  supports that conclusion.
+- Description: one sentence describing the topic or situation.
+- Experience: one or two sentences describing the reusable knowledge.
 
 Output ONLY a JSON object:
 {"candidates": [{"category": "...", "description": "...", "experience": "..."}]}"""
