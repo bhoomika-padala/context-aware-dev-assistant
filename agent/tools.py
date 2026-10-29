@@ -1,4 +1,3 @@
-
 import json
 import os
 import re
@@ -39,6 +38,18 @@ TOOLS = [
                 }
             },
             "required": ["path"],
+        },
+    },
+    {
+        "name": "search_files",
+        "description": (
+            "Search the workspace for a text string (case-insensitive). "
+            "Returns matching lines as path:line: text."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
         },
     },
     {
@@ -187,6 +198,27 @@ def run_tests(root, target=""):
     )
 
 
+def search_files(root, query):
+    root = Path(root).resolve()
+    q = query.lower()
+    hits = []
+
+    for rel in list_files(root).splitlines():
+        if rel.endswith((".png", ".jpg", ".zip", ".pyc")):
+            continue
+        try:
+            text = (root / rel).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for i, line in enumerate(text.splitlines(), 1):
+            if q in line.lower():
+                hits.append(f"{rel}:{i}: {line.strip()[:160]}")
+        if len(hits) >= 50:
+            break
+
+    return _clip("\n".join(hits) or "(no matches)")
+
+
 def execute(root, name, args):
     """Run one tool call. Never raises: errors go back to the model as text."""
 
@@ -196,6 +228,9 @@ def execute(root, name, args):
 
         if name == "read_file":
             return read_file(root, args["path"])
+
+        if name == "search_files":
+            return search_files(root, args["query"])
 
         if name == "edit_file":
             return edit_file(

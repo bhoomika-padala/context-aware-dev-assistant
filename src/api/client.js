@@ -14,7 +14,7 @@ function responseError(payload, status) {
   return `Task execution failed with status ${status}.`;
 }
 
-export async function executeTask(taskStr) {
+export async function executeTask(taskStr, useMemory = true ) {
   if (typeof taskStr !== "string" || !taskStr.trim()) {
     throw new TypeError("Task must be a non-empty string.");
   }
@@ -26,7 +26,9 @@ export async function executeTask(taskStr) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ task: taskStr.trim() }),
+      body: JSON.stringify({
+      task: taskStr.trim(),
+      use_memory: useMemory,}),
     });
   } catch (error) {
     throw new Error("Could not connect to the coding agent API.", {

@@ -25,13 +25,14 @@ const textAreaStyle = {
 
 export default function TaskPanel({ state, onRunTask }) {
   const [task, setTask] = useState("");
+  const [useMemory, setUseMemory] = useState(true);
   const isRunning = state === "running";
   const canRun = task.trim().length > 0 && !isRunning;
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!canRun) return;
-    await onRunTask(task);
+    await onRunTask(task, useMemory);
   }
 
   return (
@@ -72,6 +73,27 @@ export default function TaskPanel({ state, onRunTask }) {
           opacity: isRunning ? 0.7 : 1,
         }}
       />
+            <label
+        htmlFor="use-memory"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          color: "#cbd5e1",
+          fontSize: 14,
+          cursor: isRunning ? "not-allowed" : "pointer",
+        }}
+      >
+        <input
+          id="use-memory"
+          type="checkbox"
+          checked={useMemory}
+          onChange={(event) => setUseMemory(event.target.checked)}
+          disabled={isRunning}
+          style={{ width: 16, height: 16, accentColor: "#0284c7" }}
+        />
+        Use persistent memory
+      </label>
 
       <button
         type="submit"

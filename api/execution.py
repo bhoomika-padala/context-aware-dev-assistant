@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ExecuteRequest(BaseModel):
     task: str = Field(min_length=1, max_length=20_000)
+    use_memory: bool = True
 
 
 @router.post("/api/execute")
@@ -41,7 +42,7 @@ async def execute_task(payload: ExecuteRequest, response: Response):
                 loop.run_task,
                 config.PROJECT_ROOT.name,
                 task,
-                use_memory=True,
+                use_memory=payload.use_memory,
                 workspace=config.WORKSPACE_DIR,
             )
         except Exception as exc:

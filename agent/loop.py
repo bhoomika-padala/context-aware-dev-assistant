@@ -1,3 +1,4 @@
+
 import json
 import re
 from pathlib import Path
@@ -14,7 +15,27 @@ SYSTEM = """You are a software engineering agent working in a project workspace.
 - When done, reply with a short plain-text summary: what was wrong, what you changed,
   and whether the tests passed.
 If background from earlier sessions is included in the request, use what is relevant,
-ignore what is not, and verify it against the actual code."""
+ignore what is not, and verify it against the actual code.
+
+IMPORTANT TOOL RESTRICTIONS:
+You may only call tools explicitly provided in the current
+tool definitions.
+
+Use only the provided tools:
+list_files, read_file, search_files, edit_file, run_tests.
+Do not invent other tool names.
+
+Never invent, assume, or call tools such as repo_browser.search
+or other unregistered tools.
+
+To inspect the repository:
+- Use list_files to discover files.
+- Use read_file to inspect file contents.
+- Use search_files to search for text in workspace files.
+- Use edit_file to create or modify files.
+- Use run_tests to execute tests.
+
+Do not use any tool name that is not provided."""
 
 
 def _clip(text, n=500):
@@ -22,7 +43,7 @@ def _clip(text, n=500):
     return text if len(text) <= n else text[:n] + " ...[truncated]"
 
 
-def run_task(project_id, request, use_memory=True, workspace=None, max_steps=None):
+def run_task(project_id, request, use_memory=False, workspace=None, max_steps=None):
     """Host agent for the memory layer. The memory layer is used only through
     pipeline.build_context() before the task and pipeline.record() after it."""
     root = Path(workspace) if workspace else config.WORKSPACE_DIR
@@ -31,7 +52,7 @@ def run_task(project_id, request, use_memory=True, workspace=None, max_steps=Non
 
     if use_memory:
         prompt, injected = pipeline.build_context(project_id, request, code_context=code_context)
-    else:   # identical layout minus the memory section, so memory is the only variable
+    else:
         prompt = f"## Current code context\n{code_context}\n\n## Developer request\n{request}"
         injected = []
 
@@ -40,25 +61,45 @@ def run_task(project_id, request, use_memory=True, workspace=None, max_steps=Non
     tool_events = []
     test_results = []
     answer, steps = "", 0
+
     for steps in range(1, max_steps + 1):
         resp = llm.chat(SYSTEM, messages, tools=tools.TOOLS)
+
+        # Recover when the model attempts to call an invalid tool.
+        if resp.tool_error:
+            names = ", ".join(t["name"] for t in tools.TOOLS)
+            messages.append({
+                "role": "user",
+                "content": (
+                    f"Your last tool call was rejected ({resp.tool_error}). "
+                    f"Use only these tools: {names}."
+                )
+            })
+            trace.append("Agent: (invalid tool call, retrying)")
+            continue
+
         messages.append(llm.assistant_message(resp))
+
         if not resp.tool_calls:
             answer = resp.text.strip() or "(no answer)"
             break
+
         for call in resp.tool_calls:
             if "_parse_error" in call.args:
                 result = "Error: tool arguments were not valid JSON. Send a JSON object."
             else:
                 result = tools.execute(root, call.name, call.args)
+
             trace.append(f"Agent: {call.name}({_clip(json.dumps(call.args), 200)})")
             trace.append(f"Tool result: {_clip(result)}")
+
             tool_events.append({
                 "step": steps,
                 "tool": call.name,
                 "arguments": call.args,
                 "result": result,
             })
+
             if call.name == "run_tests":
                 exit_match = re.search(r"exit code (\d+)", result)
                 summary_match = re.search(
@@ -79,18 +120,29 @@ def run_task(project_id, request, use_memory=True, workspace=None, max_steps=Non
                     "summary": summary_match.group(1).strip() if summary_match else result,
                     "output": result,
                 })
+
             messages.append(llm.tool_result_message(call.id, result))
+
     else:
         answer = f"Stopped after {max_steps} steps without a final answer."
+
     trace.append(f"Agent: {answer}")
 
     updates, memory_error = None, None
     if use_memory:
         try:
             updates = pipeline.record(project_id, "\n".join(trace))
-        except Exception as e:      # a memory problem must not lose the agent's answer
+        except Exception as e:
             memory_error = f"{type(e).__name__}: {e}"
-    return {"answer": answer, "prompt": prompt, "injected": injected,
-            "memory_updates": updates, "memory_error": memory_error, "steps": steps,
-            "trace": trace, "tool_events": tool_events,
-            "test_results": test_results}
+
+    return {
+        "answer": answer,
+        "prompt": prompt,
+        "injected": injected,
+        "memory_updates": updates,
+        "memory_error": memory_error,
+        "steps": steps,
+        "trace": trace,
+        "tool_events": tool_events,
+        "test_results": test_results,
+    }

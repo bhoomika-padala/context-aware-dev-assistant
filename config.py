@@ -80,6 +80,6 @@ TRAJECTORY_MAX_CHARS = 12000
 
 # agent
 WORKSPACE_DIR = Path(__file__).resolve().parent / "toy_project"
-MAX_AGENT_STEPS = 12
+MAX_AGENT_STEPS = 20
 TEST_TIMEOUT = 60
 TOOL_OUTPUT_MAX_CHARS = 4000

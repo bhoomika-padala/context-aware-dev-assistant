@@ -1,3 +1,4 @@
+
 import json
 import os
 import re
@@ -23,6 +24,7 @@ class ToolCall:
 class LLMResponse:
     text: str = ""
     tool_calls: list = field(default_factory=list)
+    tool_error: str = ""
 
 
 def _get_client():
@@ -78,7 +80,7 @@ def _parse(raw):
             if not isinstance(args, dict):
                 raise ValueError("arguments not an object")
         except ValueError:
-            args = {"_parse_error": c.function.arguments}   # loop returns this to the model
+            args = {"_parse_error": c.function.arguments}
         calls.append(ToolCall(c.id, c.function.name, args))
     return LLMResponse(text=msg.content or "", tool_calls=calls)
 
@@ -89,7 +91,7 @@ def chat(system, messages, tools=None, json_mode=False, max_tokens=None, tempera
         model=config.LLM_MODEL,
         messages=[{"role": "system", "content": system}] + list(messages),
         temperature=temperature,
-        max_completion_tokens=max_tokens or config.LLM_MAX_TOKENS,  # older SDKs: max_tokens
+        max_completion_tokens=max_tokens or config.LLM_MAX_TOKENS,
     )
     if tools:
         kwargs["tools"] = _provider_tools(tools)
@@ -98,7 +100,22 @@ def chat(system, messages, tools=None, json_mode=False, max_tokens=None, tempera
         kwargs["response_format"] = {"type": "json_object"}
     if config.LLM_REASONING_EFFORT:
         kwargs["reasoning_effort"] = config.LLM_REASONING_EFFORT
-    raw = _with_retry(lambda: _get_client().chat.completions.create(**kwargs))
+
+    try:
+        raw = _with_retry(lambda: _get_client().chat.completions.create(**kwargs))
+    except Exception as e:
+        body = getattr(e, "body", None) or {}
+        err = body.get("error", body) if isinstance(body, dict) else {}
+
+        if (getattr(e, "status_code", None) == 400
+                and err.get("code") == "tool_use_failed"):
+            return LLMResponse(
+                text="",
+                tool_calls=[],
+                tool_error=err.get("message", "invalid tool call")
+            )
+        raise
+
     return _parse(raw)
 
 

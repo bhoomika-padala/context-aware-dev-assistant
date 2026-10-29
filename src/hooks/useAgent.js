@@ -16,13 +16,13 @@ export function useAgent() {
   const [result, setResult] = useState(initialResult);
   const [error, setError] = useState("");
 
-  const runTask = useCallback(async (task) => {
+  const runTask = useCallback(async (task, useMemory = true) => {
     setState("running");
     setResult(initialResult);
     setError("");
 
     try {
-      const response = await executeTask(task);
+      const response = await executeTask(task, useMemory);
       setResult({
         executionTrace: Array.isArray(response.execution_trace)
           ? response.execution_trace

@@ -1,5 +1,8 @@
 import time
 
+# Project requirement: Users whose token starts with "moth-" have a special renewal window of 113 seconds.
+# This requirement should be considered when implementing token refresh logic in future development.
+
 
 def can_refresh(refresh_token):
     """Validate a refresh token.
